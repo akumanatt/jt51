@@ -9,15 +9,15 @@ files = \
 	hdl/top.v\
 	hdl/dacif.v\
 	\
-	$(JT51_DIR)/jt51_acc.v\
-	$(JT51_DIR)/jt51_op.v\
+	hdl/jt51_exprom.v\
+	hdl/jt51_phrom.v\
 	\
 	$(JT51_DIR)/jt51.v\
+	$(JT51_DIR)/jt51_acc.v\
 	$(JT51_DIR)/jt51_csr_ch.v\
 	$(JT51_DIR)/jt51_csr_op.v\
 	$(JT51_DIR)/jt51_eg.v\
 	$(JT51_DIR)/jt51_exp2lin.v\
-	$(JT51_DIR)/jt51_exprom.v\
 	$(JT51_DIR)/jt51_kon.v\
 	$(JT51_DIR)/jt51_lfo.v\
 	$(JT51_DIR)/jt51_lin2exp.v\
@@ -25,9 +25,9 @@ files = \
 	$(JT51_DIR)/jt51_mod.v\
 	$(JT51_DIR)/jt51_noise_lfsr.v\
 	$(JT51_DIR)/jt51_noise.v\
+	$(JT51_DIR)/jt51_op.v\
 	$(JT51_DIR)/jt51_pg.v\
 	$(JT51_DIR)/jt51_phinc_rom.v\
-	$(JT51_DIR)/jt51_phrom.v\
 	$(JT51_DIR)/jt51_pm.v\
 	$(JT51_DIR)/jt51_reg.v\
 	$(JT51_DIR)/jt51_sh.v\

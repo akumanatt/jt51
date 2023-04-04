@@ -163,6 +163,65 @@ always @(posedge clk) if(cen) begin
     phaselo_XI <= aux_X;
 end
 
+`ifdef FMICE
+
+wire [11:0] sta_XI;
+
+jt51_phrom u_phrom(
+    .clk    ( clk       ),
+    .cen    ( cen       ),
+    .addr   ( aux_X     ),
+    .ph     ( sta_XI    )
+);
+
+// REGISTER/CYCLE 11
+// Sine table    
+// Main sine table body
+reg [10:0]  subtresult;
+reg [11:0]  atten_internal_XI;
+
+always @(*) begin
+    subtresult = eg_atten_XI + sta_XI[11:2];
+    atten_internal_XI = { subtresult[9:0], sta_XI[1:0] } | {12{subtresult[10]}};
+end
+
+// Register cycle 12
+// Exponential table
+wire [12:0] exp_XII;
+reg  [11:0] totalatten_XII;
+
+jt51_exprom u_exprom(
+    .clk    ( clk           ),
+    .cen    ( cen           ),
+    .addr   ( atten_internal_XI[7:0] ),
+    .exp    ( exp_XII       )
+);
+
+always @(posedge clk) if(cen) begin
+    totalatten_XII <= atten_internal_XI;
+end
+
+reg [12:0]  mantissa_XIII;
+reg [3:0]   exponent_XIII;
+
+always @(posedge clk) if(cen) begin
+    mantissa_XIII <= exp_XII;
+    exponent_XIII <= totalatten_XII[11:8];
+end
+
+// REGISTER/CYCLE 13
+// Introduce test bit as MSB, 2's complement & Carry-out discarded
+wire [12:0] shifter_3 = mantissa_XIII >> (~exponent_XIII);
+
+reg signed [13:0] op_XIII;
+wire signbit_XIII;
+
+always @(*) begin
+    op_XIII = ({ test_214, shifter_3 } ^ {14{signbit_XIII}}) + {13'd0, signbit_XIII};               
+end
+
+`else
+
 wire [45:0] sta_XI;
 
 jt51_phrom u_phrom(
@@ -305,6 +364,8 @@ wire signbit_XIII;
 always @(*) begin
     op_XIII = ({ test_214, shifter_3 } ^ {14{signbit_XIII}}) + {13'd0, signbit_XIII};               
 end
+
+`endif
 
 jt51_sh #( .width(14), .stages(4)) out_padding(
     .rst    ( rst       ),
