@@ -105,7 +105,31 @@ always @(posedge clk) begin
 end
 
 reg  signed [15:0] opsum;
-wire signed [16:0] opsum10 = {{3{op_val[13]}},op_val}+{total[15],total};
+
+`ifdef FMICE
+    wire signed [31:0] opsum10;
+
+    SB_MAC16 #(
+        .TOPOUTPUT_SELECT( 2'b00 ),
+        .TOPADDSUB_LOWERINPUT( 2'b11 ),
+        .TOPADDSUB_UPPERINPUT( 1'b1 ),
+        .TOPADDSUB_CARRYSELECT( 2'b11 ),
+        .BOTOUTPUT_SELECT( 2'b00 ),
+        .BOTADDSUB_LOWERINPUT( 2'b00 ),
+        .BOTADDSUB_UPPERINPUT( 1'b1 ),
+        .BOTADDSUB_CARRYSELECT( 2'b00 ),
+        .MODE_8x8( 1'b1 ),
+    ) u_mac16 (
+        .B ( total ),
+        .D ( {{2{op_val[13]}}, op_val} ),
+        .C ( {15'bX, op_val[13]} ),
+        .ADDSUBTOP ( 1'b0 ),
+        .ADDSUBBOT ( 1'b0 ),
+        .O ( opsum10 )
+    );
+`else
+    wire signed [16:0] opsum10 = {{3{op_val[13]}},op_val}+{total[15],total};
+`endif
 
 always @(*) begin
     if( rst_sum )

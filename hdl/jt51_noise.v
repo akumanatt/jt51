@@ -102,7 +102,11 @@ always @(posedge clk, posedge rst) begin
     if( rst ) begin
         mix <= 12'd0;
     end else if( op31_no && cen ) begin
-        mix     <= { mix_sgn, eg[9:2] ^ {8{out}}, {3{mix_sgn}} };
+        `ifdef FMICE
+            mix     <= { mix_sgn, eg ^ {10{out}}, mix_sgn };
+        `else
+            mix     <= { mix_sgn, eg[9:2] ^ {8{out}}, {3{mix_sgn}} };
+        `endif
     end
 end
 

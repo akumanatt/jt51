@@ -45,9 +45,9 @@ module jt51_pg(
     `endif
 );
 
-wire [19:0] ph_VII;
+wire [19:0] ph_VII, ph_VIII_next;
 
-reg [19:0]  phase_base_VI, phase_step_VII, ph_VIII;
+reg [19:0]  phase_step_VII, ph_VIII;
 reg [17:0]  phase_base_IV, phase_base_V;
 wire pg_rst_VII;
 
@@ -205,32 +205,132 @@ always @(posedge clk) if(cen) begin
     dt1_V <= dt1_IV;
 end
 
-    // V APPLY_DT1
-always @(posedge clk) if(cen) begin
-    if( dt1_V[1:0]==2'd0 )
-        phase_base_VI   <=  {2'b0, phase_base_V};
-    else begin
+`ifdef FMICE
+    wire [31:0] mac16_0_out, mac16_1_out;
+    wire        mac16_0_cout;
+    wire [7:0]  mul_VI_e = (mul_VI == 4'd0) ? 8'd1 : {3'b0, mul_VI, 1'b0};
+    wire [9:0]  incdec = dt1_V[2] ? 10'h3FF : {mac16_0_cout};
+    reg [19:0]  phase_base_VI;
+
+    // V APPLY_DT1 (uses high half of the first DSP)
+    // VI APPLY_MUL (uses low half of the first DSP and the entire second DSP)
+    SB_MAC16 #(
+        .TOPOUTPUT_SELECT( 2'b00 ),     // wire add/sub
+        .TOPADDSUB_LOWERINPUT( 2'b00 ), // A input
+        .TOPADDSUB_UPPERINPUT( 1'b1 ),  // C input
+        .TOPADDSUB_CARRYSELECT( 2'b00 ),// 0
+        .BOTOUTPUT_SELECT( 2'b10 ),     // 8x8 output
+        .MODE_8x8( 1'b1 )
+    ) u_mac16_0 (
+        .A ( {phase_base_V[7:0], 6'b0, phase_base_VI[17:16]} ),
+        .B ( {8'bX, mul_VI_e} ),
+        .C ( (dt1_V[1:0]==2'd0) ? 16'b0 : {3'b0, dt1_offset_V, 8'b0} ),
+        .ADDSUBTOP ( dt1_V[2] ),
+        .O ( mac16_0_out ),
+        .CO ( mac16_0_cout )
+    );
+    SB_MAC16 #(
+        .TOPOUTPUT_SELECT( 2'b11 ),     // 16x16 output
+        .BOTOUTPUT_SELECT( 2'b11 ),     // 16x16 output
+        .MODE_8x8( 1'b0 )
+    ) u_mac16_1 (
+        .A ( phase_base_VI[15:0] ),
+        .B ( {8'b0, mul_VI_e} ),
+        .O ( mac16_1_out )
+    );
+
+    always @(posedge clk) if(cen) begin
         if( !dt1_V[2] )
-            phase_base_VI   <= {2'b0, phase_base_V} + { 15'd0, dt1_offset_V };
+            phase_base_VI   <= {phase_base_V + mac16_0_cout, mac16_0_out[31:24]};
         else
-            phase_base_VI   <= {2'b0, phase_base_V} - { 15'd0, dt1_offset_V };
+            phase_base_VI   <= {phase_base_V - mac16_0_cout, mac16_0_out[31:24]};
+        phase_step_VII <= mac16_1_out[20:1] + {mac16_0_out[4:1], 16'b0};
     end
-end
+`else
+`ifdef 0
+    wire [19:0]  phase_base_VI;
+    wire [31:0] mac16_1_out;
+
+    SB_MAC16 #(
+        .TOPOUTPUT_SELECT( 2'b01 ),     // reg add/sub
+        .TOPADDSUB_LOWERINPUT( 2'b00 ), // A input
+        .TOPADDSUB_UPPERINPUT( 1'b1 ),  // C input
+        .TOPADDSUB_CARRYSELECT( 2'b11 ),// carry from bottom
+        .BOTOUTPUT_SELECT( 2'b01 ),     // reg add/sub
+        .BOTADDSUB_LOWERINPUT( 2'b00 ), // B input
+        .BOTADDSUB_UPPERINPUT( 1'b1 ),  // D input
+        .BOTADDSUB_CARRYSELECT( 2'b00 ),// 0
+        .MODE_8x8( 1'b1 )
+    ) u_mac16_1 (
+        .CLK ( clk ),
+        .CE ( cen ),
+        .B ( phase_base_V[15:0] ),
+        .A ( {14'b0, phase_base_V[17:16]} ),
+        .D ( (dt1_V[1:0]==2'd0) ? 16'b0 : {11'b0, dt1_offset_V} ),
+        .C ( 16'b0 ),
+        .ADDSUBTOP ( dt1_V[2] ),
+        .ADDSUBBOT ( dt1_V[2] ),
+        .O ( mac16_1_out )
+    );
+    assign phase_base_VI = mac16_1_out[19:0];
+
+`else
+    reg [19:0]  phase_base_VI;
+    // V APPLY_DT1
+    always @(posedge clk) if(cen) begin
+        if( dt1_V[1:0]==2'd0 )
+            phase_base_VI   <=  {2'b0, phase_base_V};
+        else begin
+            if( !dt1_V[2] )
+                phase_base_VI   <= {2'b0, phase_base_V} + { 15'd0, dt1_offset_V };
+            else
+                phase_base_VI   <= {2'b0, phase_base_V} - { 15'd0, dt1_offset_V };
+        end
+    end
+`endif
 
     // VI APPLY_MUL
-always @(posedge clk) if(cen) begin
-    if( mul_VI==4'd0 )
-        phase_step_VII  <= { 1'b0, phase_base_VI[19:1] };
-    else
-        phase_step_VII  <= phase_base_VI * mul_VI;
-end
+    always @(posedge clk) if(cen) begin
+        if( mul_VI==4'd0 )
+            phase_step_VII  <= { 1'b0, phase_base_VI[19:1] };
+        else
+            phase_step_VII  <= phase_base_VI * mul_VI;
+    end
+`endif
+
+`ifdef FMICE
+    wire [31:0] mac16_2_out;
+
+    SB_MAC16 #(
+        .TOPOUTPUT_SELECT( 2'b00 ),     // wire add/sub
+        .TOPADDSUB_LOWERINPUT( 2'b00 ), // A input
+        .TOPADDSUB_UPPERINPUT( 1'b1 ),  // C input
+        .TOPADDSUB_CARRYSELECT( 2'b10 ),// accum from bottom
+        .BOTOUTPUT_SELECT( 2'b00 ),     // wire add/sub
+        .BOTADDSUB_LOWERINPUT( 2'b00 ), // B input
+        .BOTADDSUB_UPPERINPUT( 1'b1 ),  // D input
+        .BOTADDSUB_CARRYSELECT( 2'b00 ),// 0
+        .MODE_8x8( 1'b1 )
+    ) u_mac16_2 (
+        .B ( ph_VII[15:0] ),
+        .A ( {12'b0, ph_VII[19:16]} ),
+        .D ( phase_step_VII[15:0] ),
+        .C ( {12'b0, phase_step_VII[19:16]} ),
+        .ADDSUBTOP ( 1'b0 ),
+        .ADDSUBBOT ( 1'b0 ),
+        .O ( mac16_2_out )
+    );
+    assign ph_VIII_next = mac16_2_out[19:0];
+`else
+    assign ph_VIII_next = ph_VII + phase_step_VII;
+`endif
 
 // VII have same number of stages as jt51_envelope
 always @(posedge clk, posedge rst) begin
     if( rst )
         ph_VIII <= 20'd0;
     else if(cen) begin
-        ph_VIII <= pg_rst_VII ? 20'd0 : ph_VII + phase_step_VII;
+        ph_VIII <= pg_rst_VII ? 20'd0 : ph_VIII_next;
         `ifdef DISPLAY_STEP
             $display( "%d", phase_step_VII );
         `endif
