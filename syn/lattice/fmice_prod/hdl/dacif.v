@@ -33,7 +33,7 @@ module dacif(
     input  wire [15:0] left_data,       // 2's complement signed left data
     input  wire [15:0] right_data,      // 2's complement signed right data
 
-    // Left-justified serial audio output
+    // I2S audio output
     output reg         dac_lrck,
     output wire        dac_bck,
     output wire        dac_data);
@@ -59,17 +59,7 @@ module dacif(
     reg lrck_r;
     always @(posedge clk) lrck_r <= dac_lrck;
 
-    // Generate BCK
-    reg bck_r;
-    always @(posedge clk or posedge rst) begin
-        if (rst) begin
-            bck_r <= 0;
-        end else begin
-            bck_r <= !bck_r;
-        end
-    end
-
-    assign dac_bck = bck_r;
+    assign dac_bck = !clk;
 
     // Generate start signals
     wire start_left  = lrck_r  && !dac_lrck;
@@ -78,23 +68,21 @@ module dacif(
 
     // Shift register and sample buffer
     reg [15:0] right_sample_r;
-    reg [15:0] shiftreg_r;
+    reg [16:0] shiftreg_r;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             shiftreg_r     <= 0;
             right_sample_r <= 0;
         end else begin
-            if (bck_r) begin
-                shiftreg_r <= {shiftreg_r[14:0], 1'b0};
-            end
+            shiftreg_r <= {shiftreg_r[15:0], 1'b0};
 
             if (start_left) begin
-                shiftreg_r     <= left_data;
+                shiftreg_r     <= {1'b0, left_data};
                 right_sample_r <= right_data;
             end
             if (start_right) begin
-                shiftreg_r     <= right_sample_r;
+                shiftreg_r     <= {1'b0, right_sample_r};
             end
         end
     end
