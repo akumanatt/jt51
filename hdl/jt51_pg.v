@@ -76,6 +76,48 @@ jt51_phinc_rom u_phinctable(
     .phinc  ( phinc_III    )
 );
 
+`ifdef FMICE
+
+reg [4:0] dt1_limited_IV;
+reg [4:0] dt1_table[511:0]; // size is bigger than it should to hint BRAM usage
+
+initial begin
+    dt1_table[000] = 5'd0 ; dt1_table[032] = 5'd0 ; dt1_table[064] = 5'd1 ; dt1_table[096] = 5'd2 ;
+    dt1_table[001] = 5'd0 ; dt1_table[033] = 5'd0 ; dt1_table[065] = 5'd1 ; dt1_table[097] = 5'd2 ;
+    dt1_table[002] = 5'd0 ; dt1_table[034] = 5'd0 ; dt1_table[066] = 5'd1 ; dt1_table[098] = 5'd2 ;
+    dt1_table[003] = 5'd0 ; dt1_table[035] = 5'd0 ; dt1_table[067] = 5'd1 ; dt1_table[099] = 5'd2 ;
+    dt1_table[004] = 5'd0 ; dt1_table[036] = 5'd1 ; dt1_table[068] = 5'd2 ; dt1_table[100] = 5'd2 ;
+    dt1_table[005] = 5'd0 ; dt1_table[037] = 5'd1 ; dt1_table[069] = 5'd2 ; dt1_table[101] = 5'd3 ;
+    dt1_table[006] = 5'd0 ; dt1_table[038] = 5'd1 ; dt1_table[070] = 5'd2 ; dt1_table[102] = 5'd3 ;
+    dt1_table[007] = 5'd0 ; dt1_table[039] = 5'd1 ; dt1_table[071] = 5'd2 ; dt1_table[103] = 5'd3 ;
+    dt1_table[008] = 5'd0 ; dt1_table[040] = 5'd1 ; dt1_table[072] = 5'd2 ; dt1_table[104] = 5'd4 ;
+    dt1_table[009] = 5'd0 ; dt1_table[041] = 5'd1 ; dt1_table[073] = 5'd3 ; dt1_table[105] = 5'd4 ;
+    dt1_table[010] = 5'd0 ; dt1_table[042] = 5'd1 ; dt1_table[074] = 5'd3 ; dt1_table[106] = 5'd4 ;
+    dt1_table[011] = 5'd0 ; dt1_table[043] = 5'd1 ; dt1_table[075] = 5'd3 ; dt1_table[107] = 5'd5 ;
+    dt1_table[012] = 5'd0 ; dt1_table[044] = 5'd2 ; dt1_table[076] = 5'd4 ; dt1_table[108] = 5'd5 ;
+    dt1_table[013] = 5'd0 ; dt1_table[045] = 5'd2 ; dt1_table[077] = 5'd4 ; dt1_table[109] = 5'd6 ;
+    dt1_table[014] = 5'd0 ; dt1_table[046] = 5'd2 ; dt1_table[078] = 5'd4 ; dt1_table[110] = 5'd6 ;
+    dt1_table[015] = 5'd0 ; dt1_table[047] = 5'd2 ; dt1_table[079] = 5'd5 ; dt1_table[111] = 5'd7 ;
+    dt1_table[016] = 5'd0 ; dt1_table[048] = 5'd2 ; dt1_table[080] = 5'd5 ; dt1_table[112] = 5'd8 ;
+    dt1_table[017] = 5'd0 ; dt1_table[049] = 5'd3 ; dt1_table[081] = 5'd6 ; dt1_table[113] = 5'd8 ;
+    dt1_table[018] = 5'd0 ; dt1_table[050] = 5'd3 ; dt1_table[082] = 5'd6 ; dt1_table[114] = 5'd9 ;
+    dt1_table[019] = 5'd0 ; dt1_table[051] = 5'd3 ; dt1_table[083] = 5'd7 ; dt1_table[115] = 5'd10;
+    dt1_table[020] = 5'd0 ; dt1_table[052] = 5'd4 ; dt1_table[084] = 5'd8 ; dt1_table[116] = 5'd11;
+    dt1_table[021] = 5'd0 ; dt1_table[053] = 5'd4 ; dt1_table[085] = 5'd8 ; dt1_table[117] = 5'd12;
+    dt1_table[022] = 5'd0 ; dt1_table[054] = 5'd4 ; dt1_table[086] = 5'd9 ; dt1_table[118] = 5'd13;
+    dt1_table[023] = 5'd0 ; dt1_table[055] = 5'd5 ; dt1_table[087] = 5'd10; dt1_table[119] = 5'd14;
+    dt1_table[024] = 5'd0 ; dt1_table[056] = 5'd5 ; dt1_table[088] = 5'd11; dt1_table[120] = 5'd16;
+    dt1_table[025] = 5'd0 ; dt1_table[057] = 5'd6 ; dt1_table[089] = 5'd12; dt1_table[121] = 5'd17;
+    dt1_table[026] = 5'd0 ; dt1_table[058] = 5'd6 ; dt1_table[090] = 5'd13; dt1_table[122] = 5'd19;
+    dt1_table[027] = 5'd0 ; dt1_table[059] = 5'd7 ; dt1_table[091] = 5'd14; dt1_table[123] = 5'd20;
+    dt1_table[028] = 5'd0 ; dt1_table[060] = 5'd8 ; dt1_table[092] = 5'd16; dt1_table[124] = 5'd22;
+    dt1_table[029] = 5'd0 ; dt1_table[061] = 5'd8 ; dt1_table[093] = 5'd16; dt1_table[125] = 5'd22;
+    dt1_table[030] = 5'd0 ; dt1_table[062] = 5'd8 ; dt1_table[094] = 5'd16; dt1_table[126] = 5'd22;
+    dt1_table[031] = 5'd0 ; dt1_table[063] = 5'd8 ; dt1_table[095] = 5'd16; dt1_table[127] = 5'd22;
+end
+
+`else
+
 always @(*) begin : calcpow2
     case( pow2ind_IV )
         3'd0: pow2 = 5'd16;
@@ -111,6 +153,8 @@ always @(*) begin : dt1_limit_mux
     dt1_limited_IV = dt1_unlimited > dt1_limit ?
                             dt1_limit[4:0] : dt1_unlimited[4:0];
 end
+
+`endif
 
 reg signed [8:0] mod_I;
 
@@ -165,14 +209,16 @@ always @(posedge clk) if(cen) begin
     phinc_addr_III  <= keycode_II[9:0];
     octave_III  <= keycode_II[13:10];
     keycode_III <=  keycode_II[12:8];
+`ifndef FMICE
         // Using bits 13:9 fixes Double Dragon issue #14
         // but notes get too long in Jackal
     case( dt1_II[1:0] )
-        2'd1:   dt1_kf_III  <=  keycode_II[13:8]    - (6'b1<<2);
-        2'd2:   dt1_kf_III  <=  keycode_II[13:8]    + (6'b1<<2);
-        2'd3:   dt1_kf_III  <=  keycode_II[13:8]    + (6'b1<<3);
+        2'd1:   dt1_kf_III  <=  keycode_II[13:8]    - 6'b0100;
+        2'd2:   dt1_kf_III  <=  keycode_II[13:8]    + 6'b0100;
+        2'd3:   dt1_kf_III  <=  keycode_II[13:8]    + 6'b1000;
         default:dt1_kf_III  <=  keycode_II[13:8];
     endcase
+`endif
     dt1_III   <= dt1_II;
 end
 
@@ -190,9 +236,13 @@ always @(posedge clk) if(cen) begin
         4'd8:   phase_base_IV   <=  {       phinc_III[11:0], 6'b0 };
         default:phase_base_IV   <=  18'd0;
     endcase
-    pow2ind_IV  <= dt1_kf_III[2:0];
     dt1_IV      <= dt1_III;
+`ifdef FMICE
+    dt1_limited_IV  <= dt1_table[{dt1_III[1:0], keycode_III}];
+`else
+    pow2ind_IV  <= dt1_kf_III[2:0];
     dt1_kf_IV   <= dt1_kf_III[5:3];
+`endif
 end
 
     // IV LIMIT_BASE
@@ -222,29 +272,33 @@ end
         .BOTOUTPUT_SELECT( 2'b10 ),     // 8x8 output
         .MODE_8x8( 1'b1 )
     ) u_mac16_0 (
-        .A ( {phase_base_V[7:0], 6'b0, phase_base_VI[17:16]} ),
+        // here there are 2 operations going on at the same time:
+        // Ol = Al * Bl and Oh = C +- A
+        // Cl is 0x80 in order to absorb Al's borrow (!)
+        .A ( {3'b0, dt1_offset_V, 6'b0, phase_base_VI[17:16]} ),
         .B ( {8'bX, mul_VI_e} ),
-        .C ( (dt1_V[1:0]==2'd0) ? 16'b0 : {3'b0, dt1_offset_V, 8'b0} ),
+        .C ( {phase_base_V[7:0], 8'h80} ),
         .ADDSUBTOP ( dt1_V[2] ),
         .O ( mac16_0_out ),
-        .CO ( mac16_0_cout )
+        .ACCUMCO ( mac16_0_cout )
     );
     SB_MAC16 #(
-        .TOPOUTPUT_SELECT( 2'b11 ),     // 16x16 output
+        .TOPOUTPUT_SELECT( 2'b00 ),     // wire add/sub
+        .TOPADDSUB_LOWERINPUT( 2'b10 ), // 16x16 output
+        .TOPADDSUB_UPPERINPUT( 1'b1 ),  // C input
+        .TOPADDSUB_CARRYSELECT( 2'b00 ),// 0
         .BOTOUTPUT_SELECT( 2'b11 ),     // 16x16 output
         .MODE_8x8( 1'b0 )
     ) u_mac16_1 (
         .A ( phase_base_VI[15:0] ),
         .B ( {8'b0, mul_VI_e} ),
+        .C ( {11'b0, mac16_0_out[4:0]} ),
         .O ( mac16_1_out )
     );
 
     always @(posedge clk) if(cen) begin
-        if( !dt1_V[2] )
-            phase_base_VI   <= {phase_base_V + mac16_0_cout, mac16_0_out[31:24]};
-        else
-            phase_base_VI   <= {phase_base_V - mac16_0_cout, mac16_0_out[31:24]};
-        phase_step_VII <= mac16_1_out[20:1] + {mac16_0_out[4:1], 16'b0};
+        phase_base_VI  <= {2'b0, phase_base_V[17:8] + {{9{mac16_0_cout & dt1_V[2]}}, mac16_0_cout}, mac16_0_out[31:24]};
+        phase_step_VII <= mac16_1_out[20:1];
     end
 `else
 `ifdef 0
