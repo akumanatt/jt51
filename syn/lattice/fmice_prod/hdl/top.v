@@ -22,12 +22,23 @@ wire            sample;
 wire    [15:0]  left_data;
 wire    [15:0]  right_data;
 reg             p1;
+reg     [5:0]   rst;
 
 assign ym_d = ym_rd_n ? dout : 8'bZ;
-always @(posedge ym_p1) p1 <= !p1;
+
+always @(posedge ym_p1, negedge ym_ic_n) begin
+    if (!ym_ic_n) begin
+        // hold reset pulse to be long enough to clear all BRAM shifters
+        p1 <= 0;
+        rst <= 6'b111111;
+    end else begin
+        p1 <= !p1;
+        rst <= |rst ? (rst - 6'b1) : 6'b0;
+    end
+end
 
 jt51 u_jt51(
-    .rst    ( !ym_ic_n      ),
+    .rst    ( |rst          ),
     .clk    ( ym_p1         ),
     .cen    ( 1'b1          ),
     .cen_p1 ( p1            ),
@@ -46,7 +57,7 @@ jt51 u_jt51(
 );
 
 dacif u_dac(
-    .rst            ( !ym_ic_n      ),
+    .rst            ( |rst          ),
     .clk            ( ym_p1         ),
 
     .left_data      ( left_data     ),

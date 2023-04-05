@@ -411,7 +411,7 @@ always @(posedge clk, posedge rst) begin
     end
 end
 
-jt51_sh #( .width(20), .stages(32-3) ) u_phsh(
+jt51_sh #( .width(20), .stages(32-3), .bram(1) ) u_phsh(
     .rst    ( rst       ),
     .clk    ( clk       ),
     .cen    ( cen       ),

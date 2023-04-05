@@ -19,13 +19,20 @@
     */
 
 
-module jt51_sh #(parameter width=5, stages=32, rstval=1'b0 ) (
+module jt51_sh #(parameter width=5, stages=32, rstval=1'b0, bram=0 ) (
     input                           rst,
     input                           clk,
     input                           cen,
     input       [width-1:0]         din,
     output      [width-1:0]         drop
 );
+
+`ifdef FMICE
+
+generate
+if (bram == 0) begin
+
+`endif
 
 reg [stages-1:0] bits[width-1:0];
 
@@ -41,5 +48,39 @@ generate
         assign drop[i] = bits[i][stages-1];
     end
 endgenerate
+
+`ifdef FMICE
+
+end else begin
+
+// Block RAM'd version, requires reset to hold for up to 32 clocks
+
+reg [width-1:0] bits[255:0];
+reg [width-1:0] dout;
+reg [7:0] raddr = 8'b0;
+reg [7:0] waddr = stages-1;
+
+genvar i;
+generate
+    for (i=0; i < 32; i=i+1) begin
+        initial bits[i] = {width{rstval}};
+    end
+endgenerate
+
+always @(posedge clk) begin
+    if(rst || cen) begin
+        dout <= bits[raddr];
+        bits[waddr] <= rst ? {width{rstval}} : din;
+        raddr <= {3'b0, raddr[4:0] + 5'b1};
+        waddr <= {3'b0, waddr[4:0] + 5'b1};
+    end
+end
+
+assign drop = rst ? {width{rstval}} : dout;
+    
+end
+endgenerate
+
+`endif
 
 endmodule
