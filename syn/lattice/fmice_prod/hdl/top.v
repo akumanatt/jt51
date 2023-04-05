@@ -14,7 +14,7 @@ module top (
     output          dac_dat,
     output          dac_mclk,
     output          dac_bclk,
-    output          dac_lrclk,
+    output          dac_lrclk
 );
 
 wire    [7:0]   dout;

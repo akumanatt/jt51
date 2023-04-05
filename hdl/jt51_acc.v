@@ -155,6 +155,13 @@ jt51_sh #(.width(16),.stages(8)) u_acc(
 );
 
 
+`ifdef FMICE
+
+assign left   = 16'd0;
+assign right  = 16'd0;
+
+`else
+
 wire signed [9:0] left_man, right_man;
 wire [2:0] left_exp, right_exp;
 
@@ -179,6 +186,8 @@ jt51_lin2exp right2exp(
   .lin( xright    ),
   .man( right_man ),
   .exp( right_exp ) );
+
+`endif
 
 `ifdef DUMPLEFT
 

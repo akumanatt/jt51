@@ -72,7 +72,7 @@ assign keycode_I_out = keycode_I;
 
 jt51_phinc_rom u_phinctable(
     // .clk     ( clk        ),
-    .keycode( phinc_addr_III[9:0]  ),
+    .keycode( phinc_addr_III ),
     .phinc  ( phinc_III    )
 );
 
@@ -238,7 +238,7 @@ always @(posedge clk) if(cen) begin
     endcase
     dt1_IV      <= dt1_III;
 `ifdef FMICE
-    dt1_limited_IV  <= dt1_table[{dt1_III[1:0], keycode_III}];
+    dt1_limited_IV  <= dt1_table[{2'b0, dt1_III[1:0], keycode_III}];
 `else
     pow2ind_IV  <= dt1_kf_III[2:0];
     dt1_kf_IV   <= dt1_kf_III[5:3];
@@ -259,7 +259,6 @@ end
     wire [31:0] mac16_0_out, mac16_1_out;
     wire        mac16_0_cout;
     wire [7:0]  mul_VI_e = (mul_VI == 4'd0) ? 8'd1 : {3'b0, mul_VI, 1'b0};
-    wire [9:0]  incdec = dt1_V[2] ? 10'h3FF : {mac16_0_cout};
     reg [19:0]  phase_base_VI;
 
     // V APPLY_DT1 (uses high half of the first DSP)
@@ -301,7 +300,7 @@ end
         phase_step_VII <= mac16_1_out[20:1];
     end
 `else
-`ifdef 0
+`ifdef 
     wire [19:0]  phase_base_VI;
     wire [31:0] mac16_1_out;
 
