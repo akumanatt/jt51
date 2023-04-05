@@ -257,30 +257,31 @@ end
 
 `ifdef FMICE
     wire [31:0] mac16_0_out, mac16_1_out;
-    wire        mac16_0_cout;
-    wire [7:0]  mul_VI_e = (mul_VI == 4'd0) ? 8'd1 : {3'b0, mul_VI, 1'b0};
-    reg [19:0]  phase_base_VI;
+    wire [15:0]  mul_VI_e = (mul_VI == 4'd0) ? 16'd1 : {11'b0, mul_VI, 1'b0};
+    reg [17:0]  phase_base_VI;
 
-    // V APPLY_DT1 (uses high half of the first DSP)
-    // VI APPLY_MUL (uses low half of the first DSP and the entire second DSP)
+    // V APPLY_DT1
     SB_MAC16 #(
         .TOPOUTPUT_SELECT( 2'b00 ),     // wire add/sub
         .TOPADDSUB_LOWERINPUT( 2'b00 ), // A input
         .TOPADDSUB_UPPERINPUT( 1'b1 ),  // C input
-        .TOPADDSUB_CARRYSELECT( 2'b00 ),// 0
-        .BOTOUTPUT_SELECT( 2'b10 ),     // 8x8 output
+        .TOPADDSUB_CARRYSELECT( 2'b10 ),// accum from bottom
+        .BOTOUTPUT_SELECT( 2'b00 ),     // wire add/sub
+        .BOTADDSUB_LOWERINPUT( 2'b00 ), // B input
+        .BOTADDSUB_UPPERINPUT( 1'b1 ),  // D input
+        .BOTADDSUB_CARRYSELECT( 2'b00 ),// 0
         .MODE_8x8( 1'b1 )
     ) u_mac16_0 (
-        // here there are 2 operations going on at the same time:
-        // Ol = Al * Bl and Oh = C +- A
-        // Cl is 0x80 in order to absorb Al's borrow (!)
-        .A ( {3'b0, dt1_offset_V, 6'b0, phase_base_VI[17:16]} ),
-        .B ( {8'bX, mul_VI_e} ),
-        .C ( {phase_base_V[7:0], 8'h80} ),
+        .B ( {11'b0, dt1_offset_V} ),
+        .A ( 16'b0 ),
+        .D ( phase_base_V[15:0] ),
+        .C ( {14'b0, phase_base_V[17:16]} ),
         .ADDSUBTOP ( dt1_V[2] ),
-        .O ( mac16_0_out ),
-        .ACCUMCO ( mac16_0_cout )
+        .ADDSUBBOT ( dt1_V[2] ),
+        .O ( mac16_0_out )
     );
+
+    // VI APPLY_MUL
     SB_MAC16 #(
         .TOPOUTPUT_SELECT( 2'b00 ),     // wire add/sub
         .TOPADDSUB_LOWERINPUT( 2'b10 ), // 16x16 output
@@ -290,43 +291,15 @@ end
         .MODE_8x8( 1'b0 )
     ) u_mac16_1 (
         .A ( phase_base_VI[15:0] ),
-        .B ( {8'b0, mul_VI_e} ),
-        .C ( {11'b0, mac16_0_out[4:0]} ),
+        .B ( mul_VI_e ),
+        .C ( phase_base_VI[16] ? mul_VI_e : 16'b0 ),
         .O ( mac16_1_out )
     );
 
     always @(posedge clk) if(cen) begin
-        phase_base_VI  <= {2'b0, phase_base_V[17:8] + {{9{mac16_0_cout & dt1_V[2]}}, mac16_0_cout}, mac16_0_out[31:24]};
+        phase_base_VI  <= (dt1_V[1:0] == 2'b0) ? phase_base_V : mac16_0_out[17:0];
         phase_step_VII <= mac16_1_out[20:1];
     end
-`else
-`ifdef 
-    wire [19:0]  phase_base_VI;
-    wire [31:0] mac16_1_out;
-
-    SB_MAC16 #(
-        .TOPOUTPUT_SELECT( 2'b01 ),     // reg add/sub
-        .TOPADDSUB_LOWERINPUT( 2'b00 ), // A input
-        .TOPADDSUB_UPPERINPUT( 1'b1 ),  // C input
-        .TOPADDSUB_CARRYSELECT( 2'b11 ),// carry from bottom
-        .BOTOUTPUT_SELECT( 2'b01 ),     // reg add/sub
-        .BOTADDSUB_LOWERINPUT( 2'b00 ), // B input
-        .BOTADDSUB_UPPERINPUT( 1'b1 ),  // D input
-        .BOTADDSUB_CARRYSELECT( 2'b00 ),// 0
-        .MODE_8x8( 1'b1 )
-    ) u_mac16_1 (
-        .CLK ( clk ),
-        .CE ( cen ),
-        .B ( phase_base_V[15:0] ),
-        .A ( {14'b0, phase_base_V[17:16]} ),
-        .D ( (dt1_V[1:0]==2'd0) ? 16'b0 : {11'b0, dt1_offset_V} ),
-        .C ( 16'b0 ),
-        .ADDSUBTOP ( dt1_V[2] ),
-        .ADDSUBBOT ( dt1_V[2] ),
-        .O ( mac16_1_out )
-    );
-    assign phase_base_VI = mac16_1_out[19:0];
-
 `else
     reg [19:0]  phase_base_VI;
     // V APPLY_DT1
@@ -340,7 +313,6 @@ end
                 phase_base_VI   <= {2'b0, phase_base_V} - { 15'd0, dt1_offset_V };
         end
     end
-`endif
 
     // VI APPLY_MUL
     always @(posedge clk) if(cen) begin

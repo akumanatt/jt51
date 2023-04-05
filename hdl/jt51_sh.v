@@ -27,27 +27,26 @@ module jt51_sh #(parameter width=5, stages=32, rstval=1'b0, bram=0 ) (
     output      [width-1:0]         drop
 );
 
+genvar i;
+generate
+
 `ifdef FMICE
 
-generate
 if (bram == 0) begin
 
 `endif
 
 reg [stages-1:0] bits[width-1:0];
 
-genvar i;
-generate
-    for (i=0; i < width; i=i+1) begin: bit_shifter
-        always @(posedge clk, posedge rst) begin
-            if(rst)
-                bits[i] <= {stages{rstval}};
-            else if(cen)
-                bits[i] <= {bits[i][stages-2:0], din[i]};
-        end
-        assign drop[i] = bits[i][stages-1];
+for (i=0; i < width; i=i+1) begin: bit_shifter
+    always @(posedge clk, posedge rst) begin
+        if(rst)
+            bits[i] <= {stages{rstval}};
+        else if(cen)
+            bits[i] <= {bits[i][stages-2:0], din[i]};
     end
-endgenerate
+    assign drop[i] = bits[i][stages-1];
+end
 
 `ifdef FMICE
 
@@ -60,12 +59,9 @@ reg [width-1:0] dout;
 reg [7:0] raddr = 8'b0;
 reg [7:0] waddr = stages-1;
 
-genvar i;
-generate
-    for (i=0; i < 32; i=i+1) begin
-        initial bits[i] = {width{rstval}};
-    end
-endgenerate
+for (i=0; i < 32; i=i+1) begin
+    initial bits[i] = {width{rstval}};
+end
 
 always @(posedge clk) begin
     if(rst || cen) begin
@@ -79,8 +75,9 @@ end
 assign drop = rst ? {width{rstval}} : dout;
     
 end
-endgenerate
 
 `endif
+
+endgenerate
 
 endmodule
