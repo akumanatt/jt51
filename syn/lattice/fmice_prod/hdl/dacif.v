@@ -30,8 +30,8 @@ module dacif(
 
     // Sample input
     output wire        next_sample,
-    input  wire [15:0] left_data,       // 2's complement signed left data
-    input  wire [15:0] right_data,      // 2's complement signed right data
+    input  wire [23:0] left_data,       // 2's complement signed left data
+    input  wire [23:0] right_data,      // 2's complement signed right data
 
     // I2S audio output
     output reg         dac_lrck,
@@ -67,15 +67,15 @@ module dacif(
     assign next_sample = start_left;
 
     // Shift register and sample buffer
-    reg [15:0] right_sample_r;
-    reg [16:0] shiftreg_r;
+    reg [23:0] right_sample_r;
+    reg [24:0] shiftreg_r;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             shiftreg_r     <= 0;
             right_sample_r <= 0;
         end else begin
-            shiftreg_r <= {shiftreg_r[15:0], 1'b0};
+            shiftreg_r <= {shiftreg_r[23:0], 1'b0};
 
             if (start_left) begin
                 shiftreg_r     <= {1'b0, left_data};
@@ -87,6 +87,6 @@ module dacif(
         end
     end
 
-    assign dac_data  = shiftreg_r[15];
+    assign dac_data  = shiftreg_r[23];
 
 endmodule

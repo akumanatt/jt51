@@ -38,9 +38,14 @@ module jt51(
     output  signed  [15:0] left,
     output  signed  [15:0] right,
     // Full resolution output
-    output  signed  [15:0] xleft,
-    output  signed  [15:0] xright
+    output  signed  [RES-1:0] xleft,
+    output  signed  [RES-1:0] xright
 );
+`ifdef FMICE
+parameter RES = 24;
+`else
+parameter RES = 16;
+`endif
 
 // Timers
 wire [9:0]  value_A;
@@ -196,7 +201,7 @@ jt51_eg u_eg(
 );
 
 /*verilator tracing_off*/
-wire signed [13:0] op_out;
+wire signed [RES-3:0] op_out;
 
 jt51_op u_op(
     `ifdef TEST_SUPPORT

@@ -48,8 +48,15 @@ module jt51_op(
     input               zero,
     `endif
     // output data
-    output signed   [13:0]  op_XVII
+    output signed   [RES-3:0]  op_XVII
 );
+`ifdef FMICE
+parameter RES = 24;
+`else
+parameter RES = 16;
+`endif
+
+wire signed [13:0] op_XVII_in = op_XVII[RES-3:RES-16];
 
 /*  enters  exits
     m1      c1
@@ -64,7 +71,7 @@ jt51_sh #( .width(14), .stages(8), .bram(1)) prev1_buffer(
     .rst    ( rst   ),
     .clk    ( clk   ),
     .cen    ( cen   ),
-    .din    ( c1_enters ? op_XVII : prev1 ),
+    .din    ( c1_enters ? op_XVII_in : prev1 ),
     .drop   ( prev1 )
 );
 
@@ -80,7 +87,7 @@ jt51_sh #( .width(14), .stages(8), .bram(1)) prev2_buffer(
     .rst    ( rst   ),
     .clk    ( clk   ),
     .cen    ( cen   ),
-    .din    ( m1_enters ? op_XVII : prev2 ),
+    .din    ( m1_enters ? op_XVII_in : prev2 ),
     .drop   ( prev2 )
 );
 
@@ -92,10 +99,10 @@ reg         m1_II;
 
 always @(*) begin
     x  = ( {14{use_prevprev1}}  & prevprev1 ) |
-          ( {14{use_internal_x}} & op_XVII ) |
+          ( {14{use_internal_x}} & op_XVII_in ) |
           ( {14{use_prev2}}      & prev2 );
     y  = ( {14{use_prev1}}      & prev1 ) |
-          ( {14{use_internal_y}} & op_XVII );
+          ( {14{use_internal_y}} & op_XVII_in );
     xs = { x[13], x }; // sign-extend
     ys = { y[13], y }; // sign-extend
 end
@@ -187,7 +194,7 @@ end
 
 // Register cycle 12
 // Exponential table
-wire [12:0] exp_XII;
+wire [15:0] exp_XII;
 reg  [11:0] totalatten_XII;
 
 jt51_exprom u_exprom(
@@ -201,23 +208,23 @@ always @(posedge clk) if(cen) begin
     totalatten_XII <= atten_internal_XI;
 end
 
-reg [12:0]  mantissa_XIII;
+reg [20:0]  mantissa_XIII;
 reg [3:0]   exponent_XIII;
 
 always @(posedge clk) if(cen) begin
-    mantissa_XIII <= exp_XII;
+    mantissa_XIII <= {5'b00001, exp_XII};
     exponent_XIII <= totalatten_XII[11:8];
 end
 
 // REGISTER/CYCLE 13
 // Introduce test bit as MSB, 2's complement & Carry-out discarded
-wire [12:0] shifter_3 = mantissa_XIII >> exponent_XIII;
+wire [20:0] shifter_3 = exponent_XIII >= 4'd4 ? (mantissa_XIII >> (exponent_XIII - 4'd4)) : (mantissa_XIII << (4'd4 - exponent_XIII));
 
-reg signed [13:0] op_XIII;
+reg signed [21:0] op_XIII;
 wire signbit_XIII;
 
 always @(*) begin
-    op_XIII = ({ test_214, shifter_3 } ^ {14{signbit_XIII}}) + {13'd0, signbit_XIII};               
+    op_XIII = ({ test_214, shifter_3 } ^ {22{signbit_XIII}}) + {21'd0, signbit_XIII};               
 end
 
 `else
@@ -367,7 +374,7 @@ end
 
 `endif
 
-jt51_sh #( .width(14), .stages(4)) out_padding(
+jt51_sh #( .width(RES-2), .stages(4)) out_padding(
     .rst    ( rst       ),
     .clk    ( clk       ),
     .cen    ( cen       ),

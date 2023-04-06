@@ -30,20 +30,30 @@ module jt51_acc(
     input                   op31_acc,
     input           [1:0]   rl_I,
     input           [2:0]   con_I,
-    input   signed  [13:0]  op_out,
+    input   signed  [RES-3:0]  op_out,
     input                   ne,     // noise enable
     input   signed  [11:0]  noise_mix,
     output  signed  [15:0]  left,
     output  signed  [15:0]  right,
+`ifdef FMICE
+    output  reg signed  [23:0]  xleft,  // exact outputs
+    output  reg signed  [23:0]  xright
+`else
     output  reg signed  [15:0]  xleft,  // exact outputs
     output  reg signed  [15:0]  xright
+`endif
 );
+`ifdef FMICE
+parameter RES = 24;
+`else
+parameter RES = 16;
+`endif
 
-reg signed [13:0] op_val;
+reg signed [RES-3:0] op_val;
 
 always @(*) begin
     if( ne && op31_acc ) // cambiar a OP 31
-        op_val = { {2{noise_mix[11]}}, noise_mix };
+        op_val = { {2{noise_mix[11]}}, noise_mix, {RES-16{1'b0}} };
     else
         op_val = op_out;
 end
@@ -62,9 +72,9 @@ end
 
 wire ren = rl_I[1];
 wire len = rl_I[0];
-reg signed [16:0] pre_left, pre_right;
-wire signed [15:0] total;
-wire signed [16:0] total_ex = {total[15],total};
+reg signed [RES:0] pre_left, pre_right;
+wire signed [RES-1:0] total;
+wire signed [RES:0] total_ex = {total[RES-1],total};
 
 reg sum_all;
 
@@ -73,10 +83,10 @@ wire rst_sum = c2_enters;
 //wire rst_sum = m1_enters;
 //wire rst_sum = m2_enters;
 
-function signed [15:0] lim16;
-    input signed [16:0] din;
-    lim16 = !din[16] &&  din[15] ? 16'h7fff :
-           ( din[16] && !din[15] ? 16'h8000 : din[15:0] );
+function signed [RES-1:0] lim16;
+    input signed [RES:0] din;
+    lim16 = !din[RES] &&  din[RES-1] ? {1'b0, {RES-1{1'b1}}} :
+           ( din[RES] && !din[RES-1] ? {1'b1, {RES-1{1'b0}}} : din[RES-1:0] );
 endfunction
 
 
@@ -88,12 +98,12 @@ always @(posedge clk) begin
         if( rst_sum )  begin
             sum_all <= 1'b1;
             if( !sum_all ) begin
-                pre_right <= ren ? total_ex : 17'd0;
-                pre_left  <= len ? total_ex : 17'd0;
+                pre_right <= ren ? total_ex : 0;
+                pre_left  <= len ? total_ex : 0;
             end
             else begin
-                pre_right <= pre_right + (ren ? total_ex : 17'd0);
-                pre_left  <= pre_left  + (len ? total_ex : 17'd0);
+                pre_right <= pre_right + (ren ? total_ex : 0);
+                pre_left  <= pre_left  + (len ? total_ex : 0);
             end
         end
         if( c1_enters ) begin
@@ -104,25 +114,26 @@ always @(posedge clk) begin
     end
 end
 
-reg  signed [15:0] opsum;
+reg  signed [RES-1:0] opsum;
 
 `ifdef FMICE
     wire signed [31:0] opsum10;
 
     SB_MAC16 #(
-        .TOPOUTPUT_SELECT( 2'b00 ),
-        .TOPADDSUB_LOWERINPUT( 2'b11 ),
-        .TOPADDSUB_UPPERINPUT( 1'b1 ),
-        .TOPADDSUB_CARRYSELECT( 2'b11 ),
-        .BOTOUTPUT_SELECT( 2'b00 ),
-        .BOTADDSUB_LOWERINPUT( 2'b00 ),
-        .BOTADDSUB_UPPERINPUT( 1'b1 ),
-        .BOTADDSUB_CARRYSELECT( 2'b00 ),
-        .MODE_8x8( 1'b1 ),
+        .TOPOUTPUT_SELECT( 2'b00 ),     // wire add/sub
+        .TOPADDSUB_LOWERINPUT( 2'b00 ), // A input
+        .TOPADDSUB_UPPERINPUT( 1'b1 ),  // C input
+        .TOPADDSUB_CARRYSELECT( 2'b10 ),// accum from bottom
+        .BOTOUTPUT_SELECT( 2'b00 ),     // wire add/sub
+        .BOTADDSUB_LOWERINPUT( 2'b00 ), // B input
+        .BOTADDSUB_UPPERINPUT( 1'b1 ),  // D input
+        .BOTADDSUB_CARRYSELECT( 2'b00 ),// 0
+        .MODE_8x8( 1'b1 )
     ) u_mac16 (
-        .B ( total ),
-        .D ( {{2{op_val[13]}}, op_val} ),
-        .C ( {15'bX, op_val[13]} ),
+        .B ( total[15:0] ),
+        .A ( {{8{total[23]}}, total[23:16]} ),
+        .D ( op_val[15:0] ),
+        .C ( {{10{op_val[21]}}, op_val[21:16]} ),
         .ADDSUBTOP ( 1'b0 ),
         .ADDSUBBOT ( 1'b0 ),
         .O ( opsum10 )
@@ -133,20 +144,20 @@ reg  signed [15:0] opsum;
 
 always @(*) begin
     if( rst_sum )
-        opsum = sum_en ? { {2{op_val[13]}}, op_val } : 16'd0;
+        opsum = sum_en ? { {2{op_val[RES-3]}}, op_val } : 0;
     else begin
         if( sum_en )
-            if( opsum10[16]==opsum10[15] )
-                opsum = opsum10[15:0];
+            if( opsum10[RES]==opsum10[RES-1] )
+                opsum = opsum10[RES-1:0];
             else begin
-                opsum = opsum10[16] ? 16'h8000 : 16'h7fff;
+                opsum = opsum10[RES] ? {1'b1, {RES-1{1'b0}}} : {1'b0, {RES-1{1'b1}}};
             end
         else
             opsum = total;
     end
 end
 
-jt51_sh #(.width(16),.stages(8),.bram(1)) u_acc(
+jt51_sh #(.width(RES),.stages(8),.bram(1)) u_acc(
     .rst    ( rst       ),
     .clk    ( clk       ),
     .cen    ( cen       ),

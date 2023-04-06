@@ -19,8 +19,8 @@ module top (
 
 wire    [7:0]   dout;
 wire            sample;
-wire    [15:0]  left_data;
-wire    [15:0]  right_data;
+wire    [23:0]  left_data;
+wire    [23:0]  right_data;
 reg             p1;
 reg     [5:0]   rst;
 
