@@ -211,7 +211,7 @@ end
 
 // REGISTER/CYCLE 13
 // Introduce test bit as MSB, 2's complement & Carry-out discarded
-wire [12:0] shifter_3 = mantissa_XIII >> (~exponent_XIII);
+wire [12:0] shifter_3 = mantissa_XIII >> exponent_XIII;
 
 reg signed [13:0] op_XIII;
 wire signbit_XIII;
