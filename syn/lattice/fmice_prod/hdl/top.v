@@ -17,6 +17,10 @@ module top (
     output          dac_lrclk
 );
 
+reg     [7:0]   din_b;
+reg             a0_b;
+reg             wrt_b;
+reg             wr_b;
 wire    [7:0]   dout;
 wire            sample;
 wire    [23:0]  left_data;
@@ -37,15 +41,32 @@ always @(posedge ym_p1, negedge ym_ic_n) begin
     end
 end
 
+// emulate YM2151 asynchronous write timing as jt51 expects a synchronous one
+always @(posedge ym_wr_n, negedge ym_ic_n) begin
+    if (!ym_ic_n) begin
+        din_b <= 0;
+        a0_b <= 0;
+        wrt_b <= 0;
+    end else begin
+        din_b <= ym_d;
+        a0_b <= ym_a0;
+        wrt_b <= !wrt_b;
+    end
+end
+
+always @(posedge ym_p1) begin
+    wr_b <= wrt_b;
+end
+
 jt51 u_jt51(
     .rst    ( |rst          ),
     .clk    ( ym_p1         ),
     .cen    ( 1'b1          ),
     .cen_p1 ( p1            ),
     .cs_n   ( ym_cs_n       ),
-    .wr_n   ( ym_wr_n       ),
-    .a0     ( ym_a0         ),
-    .din    ( ym_d          ),
+    .wr_n   ( wr_b == wrt_b ),
+    .a0     ( a0_b          ),
+    .din    ( din_b         ),
     .dout   ( dout          ),
 
     .ct1    ( ym_ct1        ),
